@@ -1,58 +1,120 @@
-# Mac-only (no Linux checks, as you said you only use macOS)
-# ------------------------------------------------------------------------------
-
-# Homebrew taps
 tap "homebrew/bundle"
-
-# Core formulae
-brew "atuin"
-brew "bat"
+tap "jorgelbg/tap"
+tap "majd/repo"
+tap "rcmdnk/file"
+tap "shaunsingh/sfmono-nerd-font-ligaturized"
+tap "xcodesorg/made"
+brew "act"
+brew "antigen"
+brew "webp"
+brew "jpeg-xl"
+brew "aom"
+brew "ca-certificates"
+brew "gettext"
+brew "openssl@3"
+brew "aria2"
+brew "autoconf"
+brew "automake"
 brew "btop"
-brew "docker"
-brew "dockutil"
-brew "eza"
+brew "glib"
+brew "circleci"
+brew "cmake"
+brew "cocoapods"
+brew "curl"
+brew "deno"
+brew "dotnet"
+brew "fastfetch"
+brew "terminal-notifier"
+brew "fastlane"
 brew "fd"
-brew "fnm"
-brew "fzf"
+brew "unbound"
+brew "harfbuzz"
+brew "openjpeg"
+brew "leptonica"
+brew "libass"
+brew "pango"
+brew "tesseract"
+brew "ffmpeg"
+brew "fontforge"
+brew "foreman"
 brew "gh"
 brew "git"
-brew "git-delta"
-brew "glow"
-brew "jq"
-brew "lazydocker"
-brew "lazygit"
-brew "lua"
+brew "git-gui"
+brew "pinentry"
+brew "gnupg"
+brew "go"
+brew "highlight"
+brew "httpie"
+brew "hub"
+brew "hugo"
+brew "hurl"
+brew "livekit"
+brew "lua-language-server"
 brew "luarocks"
-brew "neovim"
-brew "python"
+brew "mas"
+brew "n"
+brew "ncurses"
+brew "ninja"
+brew "nushell"
+brew "openssl@1.1"
+brew "pinentry-mac"
+brew "pipx"
+brew "presenterm"
+brew "protobuf"
+brew "pure"
+brew "rcm"
+brew "reattach-to-user-namespace"
+brew "rio", args: ["HEAD"], link: false
 brew "ripgrep"
-brew "stow"
-brew "tldr"
-brew "tmux"
-brew "yarn"
-brew "zoxide"
+brew "rust"
+brew "rustup"
+brew "starship"
+brew "stylua"
+brew "tmux", args: ["HEAD"]
+brew "tree"
+brew "uv"
+brew "wget"
+brew "xcbeautify"
+brew "yt-dlp"
+brew "zls"
 brew "zsh"
-
-# LSP or additional dev tools
-brew "shellcheck"
-brew "shfmt"
-
-# macOS formulae
-brew "zsh-autosuggestions"
-brew "zsh-syntax-highlighting"
-
-# casks
-cask "1password"
-cask "1password/tap/1password-cli"
-cask "arc"
+brew "jorgelbg/tap/pinentry-touchid"
+brew "rcmdnk/file/brew-file"
+brew "xcodesorg/made/xcodes", link: false
+cask "android-studio"
+cask "cider"
 cask "docker"
-cask "figma"
-cask "font-symbols-only-nerd-font"
-cask "font-victor-mono"
-cask "font-victor-mono-nerd-font"
+cask "arc"
+cask "flutter"
+cask "font-sf-mono-nerd-font-ligaturized"
+cask "ghostty"
+cask "ipatool"
+cask "iterm2"
 cask "kitty"
-cask "nordvpn"
-cask "postman"
-cask "rectangle"
-cask "spotify"
+cask "obsidian"
+cask "phoenix"
+cask "raycast"
+cask "rio"
+cask "slack"
 cask "wezterm"
+cask "whisky"
+cask "xcodes"
+cask "zoom"
+mas "AdGuard for Safari", id: 1440147259
+mas "Cascadea", id: 1432182561
+mas "Color Picker", id: 1545870783
+mas "Dato", id: 1470584107
+mas "Developer", id: 640199958
+mas "Final Cut Pro", id: 424389933
+mas "GarageBand", id: 682658836
+mas "iMovie", id: 408981434
+mas "Keynote", id: 409183694
+mas "LanguageTool", id: 1534275760
+mas "Linearity Curve", id: 1219074514
+mas "Logic Pro", id: 634148309
+mas "Numbers", id: 409203825
+mas "Pages", id: 409201541
+mas "Refined GitHub", id: 1519867270
+mas "Speediness", id: 1596706466
+mas "Userscripts-Mac-App", id: 1463298887
+mas "Xcode", id: 497799835

@@ -1,0 +1,366 @@
+#!/usr/bin/env zsh
+
+# For my own and others sanity
+# git:
+# %b => current branch
+# %a => current action (rebase/merge)
+
+# prompt:
+# %F => color dict
+# %f => reset color
+# %~ => current path
+# %* => time
+# %n => username
+# %m => shortname host
+# %(?..) => prompt conditional - %(condition.true.false)
+
+# terminal codes:
+# \e7   => save cursor position
+# \e[2A => move cursor 2 lines up
+# \e[1G => go to position 1 in terminal
+# \e8   => restore cursor position
+# \e[K  => clears everything after the cursor on the current line
+# \e[2K => clear everything on the current line
+
+local lsep=""
+local rsep=""
+local alt_sep=""
+local alt_rsep=""
+local gray2=#343D46
+local white=#FFFFFF
+
+
+__format_cwd() {
+  local dir_limit="3"
+  local truncation="⋯"
+  local first_char
+  local part_count=0
+  local formatted_cwd=""
+  local tilde="~"
+  local dir_sep=$alt_sep
+
+  local cwd="${PWD/#$HOME/$tilde}"
+
+  # get first char of the path, i.e. tilde or slash
+  [[ -n ${ZSH_VERSION-} ]] && first_char=$cwd[1,1] || first_char=${cwd::1}
+
+  # remove leading tilde
+  cwd="${cwd#\~}"
+
+  while [[ "$cwd" == */* && "$cwd" != "/" ]]; do
+    # pop off last part of cwd
+    local part="${cwd##*/}"
+    cwd="${cwd%/*}"
+
+    formatted_cwd="$dir_sep $part $formatted_cwd"
+    part_count=$((part_count+1))
+
+    [[ $part_count -eq $dir_limit ]] && first_char="$truncation" && break
+  done
+  printf "%s" "$first_char$formatted_cwd"
+}
+
+prompt_preprompt_render() {
+  setopt localoptions noshwordsplit
+
+  # Initialize the preprompt array.
+  local -a preprompt_parts
+
+  # Set the path.
+  preprompt_parts+="%F{$white}%K{blue} $(__format_cwd) %f%k"
+
+  # Add Git branch and dirty status info.
+  typeset -gA prompt_vcs_info
+  typeset -g prompt_git_status
+  if [[ $prompt_vcs_info[branch] = '' ]];
+  then
+    preprompt_parts+="%F{blue}$lsep%f"
+  else
+    preprompt_parts+="%F{blue}%K{8}$lsep%f%k%F{$white}%K{8} ${prompt_vcs_info[branch]} %f%k"
+    if [[ -n $prompt_git_status ]];
+    then
+      preprompt_parts+="%F{8}%K{$gray2}$lsep%f%k%F{$white}%K{$gray2} ${prompt_git_status} %f%k%F{$gray2}$lsep%f"
+    else
+      preprompt_parts+="%F{8}$lsep%f%F{$white} %f"
+
+    fi
+  fi
+
+  local cleaned_ps1=$PROMPT
+  local -H MATCH MBEGIN MEND
+  if [[ $PROMPT = *$prompt_newline* ]]; then
+    cleaned_ps1=${PROMPT##*${prompt_newline}}
+  fi
+  unset MATCH MBEGIN MEND
+
+  # Construct the new prompt with a clean preprompt.
+  local -ah ps1
+  ps1=(
+    ${(j..)preprompt_parts}  # Join parts, space separated.
+    $prompt_newline           # Separate preprompt and prompt.
+    $cleaned_ps1
+  )
+
+  PROMPT="${(j..)ps1}"
+
+  # Expand the prompt for future comparision.
+  local expanded_prompt
+  expanded_prompt="${(S%%)PROMPT}"
+
+  if [[ $1 == precmd ]]; then
+    # Initial newline, for spaciousness.
+  elif [[ $prompt_last_prompt != $expanded_prompt ]]; then
+    # Redraw the prompt.
+    prompt_reset_prompt
+  fi
+
+  typeset -g prompt_last_prompt=$expanded_prompt
+}
+
+prompt_precmd() {
+  prompt_async_tasks
+  prompt_preprompt_render "precmd"
+}
+
+prompt_async_vcs_info() {
+  setopt localoptions noshwordsplit
+
+  # Configure `vcs_info` inside an async task. This frees up `vcs_info`
+  # to be used or configured as the user pleases.
+  zstyle ':vcs_info:*' enable git
+  zstyle ':vcs_info:*' use-simple true
+  # Only export two message variables from `vcs_info`.
+  zstyle ':vcs_info:*' max-exports 2
+  # Export branch (%b) and Git toplevel (%R).
+  zstyle ':vcs_info:git*' formats '%b' '%R'
+  zstyle ':vcs_info:git*' actionformats '%b|%a' '%R'
+
+  vcs_info
+
+  local -A info
+  info[pwd]=$PWD
+  info[top]=$vcs_info_msg_1_
+  info[branch]=$vcs_info_msg_0_
+
+  print -r - ${(@kvq)info}
+}
+
+prompt_async_git_status() {
+  [[ $(git rev-parse --is-inside-work-tree 2>/dev/null) == true ]] || return 1
+
+  local added_symbol="•"
+  local deleted_symbol="-"
+  local unmerged_symbol="ⅹ"
+  local modified_symbol="+"
+  local clean_symbol=""
+  local has_untracked_files_symbol="…"
+
+  local ahead_symbol="↑"
+  local behind_symbol="↓"
+
+  local unmerged_count=0
+  local modified_count=0
+  local deleted_count=0
+  local has_untracked_files=0
+  local added_count=0
+  local is_clean=""
+
+  set -- $(git rev-list --left-right --count @{upstream}...HEAD 2>/dev/null)
+  local behind_count=$1
+  local ahead_count=$2
+
+  # Added (A), Copied (C), Deleted (D), Modified (M), Renamed (R), changed (T), Unmerged (U), Unknown (X), Broken (B)
+  while read line; do
+    case "$line" in
+      M*) modified_count=$(( $modified_count + 1 )) ;;
+      U*) unmerged_count=$(( $unmerged_count + 1 )) ;;
+      D*) deleted_count=$(( $deleted_count + 1 )) ;;
+    esac
+  done < <(git diff --name-status)
+
+  while read line; do
+    case "$line" in
+      *) added_count=$(( $added_count + 1 )) ;;
+    esac
+  done < <(git diff --name-status --cached)
+
+  if [ -n "$(git ls-files --others --exclude-standard)" ]; then
+    has_untracked_files=1
+  fi
+
+  if [ $(( unmerged_count + modified_count + deleted_count + has_untracked_files + added_count )) -eq 0 ]; then
+    is_clean=1
+  fi
+
+  local leading_whitespace=""
+  [[ $ahead_count -gt 0 ]]         && { printf "%s" "$leading_whitespace$ahead_symbol$ahead_count"; leading_whitespace=" "; }
+  [[ $behind_count -gt 0 ]]        && { printf "%s" "$leading_whitespace$behind_symbol$behind_count"; leading_whitespace=" "; }
+  [[ $modified_count -gt 0 ]]      && { printf "%s" "$leading_whitespace$modified_symbol$modified_count"; leading_whitespace=" "; }
+  [[ $unmerged_count -gt 0 ]]      && { printf "%s" "$leading_whitespace$unmerged_symbol$unmerged_count"; leading_whitespace=" "; }
+  [[ $deleted_count -gt 0 ]]       && { printf "%s" "$leading_whitespace$deleted_symbol$deleted_count"; leading_whitespace=" "; }
+  [[ $added_count -gt 0 ]]         && { printf "%s" "$leading_whitespace$added_symbol$added_count"; leading_whitespace=" "; }
+  [[ $has_untracked_files -gt 0 ]] && { printf "%s" "$leading_whitespace$has_untracked_files_symbol"; leading_whitespace=" "; }
+  [[ $is_clean -gt 0 ]]            && { printf "%s" "$leading_whitespace$clean_symbol"; leading_whitespace=" "; }
+}
+
+prompt_async_tasks() {
+  setopt localoptions noshwordsplit
+
+  # Initialize the async worker.
+  ((!${prompt_async_init:-0})) && {
+    async_start_worker "huy_prompt" -u -n
+    async_register_callback "huy_prompt" prompt_async_callback
+    typeset -g prompt_async_init=1
+  }
+
+  # Update the current working directory of the async worker.
+  async_worker_eval "huy_prompt" builtin cd -q $PWD
+
+  typeset -gA prompt_vcs_info
+  typeset -g prompt_git_status
+
+  local -H MATCH MBEGIN MEND
+  if [[ $PWD != ${prompt_vcs_info[pwd]}* ]]; then
+    # Stop any running async jobs.
+    async_flush_jobs "huy_prompt"
+
+    # Reset Git preprompt variables, switching working tree.
+    unset prompt_git_status
+    # prompt_git_status=
+    prompt_vcs_info[branch]=
+    prompt_vcs_info[top]=
+  fi
+  unset MATCH MBEGIN MEND
+
+  async_job "huy_prompt" prompt_async_vcs_info
+
+  # Only perform tasks inside a Git working tree.
+  [[ -n $prompt_vcs_info[top] ]] || return
+
+  prompt_async_refresh
+}
+
+prompt_async_refresh() {
+  async_job "huy_prompt" prompt_async_git_status
+}
+
+prompt_async_callback() {
+  setopt localoptions noshwordsplit
+  local job=$1
+  local code=$2
+  local output=$3
+  local exec_time=$4
+  local next_pending=$6
+  local do_render=0
+
+  case $job in
+    \[async])
+      # Code is 1 for corrupted worker output and 2 for dead worker.
+      if [[ $code -eq 2 ]]; then
+        # Our worker died unexpectedly.
+        typeset -g prompt_async_init=0
+      fi
+      ;;
+    prompt_async_vcs_info)
+      local -A info
+      typeset -gA prompt_vcs_info
+      # Parse output (z) and unquote as array (Q@).
+      info=("${(Q@)${(z)output}}")
+      local -H MATCH MBEGIN MEND
+      if [[ $info[pwd] != $PWD ]]; then
+        # The path has changed since the check started, abort.
+        return
+      fi
+      # Check if Git top-level has changed.
+      if [[ $info[top] = $prompt_vcs_info[top] ]]; then
+        # If the stored pwd is part of $PWD, $PWD is shorter and likelier
+        # to be top-level, so we update pwd.
+        if [[ $prompt_vcs_info[pwd] = ${PWD}* ]]; then
+          prompt_vcs_info[pwd]=$PWD
+        fi
+      else
+        # Store $PWD to detect if we (maybe) left the Git path.
+        prompt_vcs_info[pwd]=$PWD
+      fi
+      unset MATCH MBEGIN MEND
+
+      # The update has a Git top-level set, which means we just entered a new
+      # Git directory. Run the async refresh tasks.
+      [[ -n $info[top] ]] && [[ -z $prompt_vcs_info[top] ]] && prompt_async_refresh
+
+      # Always update branch and top-level.
+      prompt_vcs_info[branch]=$info[branch]
+      prompt_vcs_info[top]=$info[top]
+
+      do_render=1
+      ;;
+
+    prompt_async_git_status)
+      typeset -g prompt_git_status
+      local -A status_info
+      if [[ -n $output ]];
+      then
+        status_info=$output
+      fi
+      if [[ $status_info != $prompt_git_status ]];
+      then
+        prompt_git_status=$status_info
+        do_render=1
+      fi
+      ;;
+
+
+  esac
+
+  if (( next_pending )); then
+    (( do_render )) && typeset -g prompt_async_render_requested=1
+    return
+  fi
+
+  [[ ${prompt_async_render_requested:-$do_render} = 1 ]] && prompt_preprompt_render
+  unset prompt_async_render_requested
+}
+
+prompt_reset_prompt() {
+  if [[ $CONTEXT == cont ]]; then
+    # When the context is "cont", PS2 is active and calling
+    # reset-prompt will have no effect on PS1, but it will
+    # reset the execution context (%_) of PS2 which we don't
+    # want. Unfortunately, we can't save the output of "%_"
+    # either because it is only ever rendered as part of the
+    # prompt, expanding in-place won't work.
+    return
+  fi
+
+  zle && zle .reset-prompt
+}
+
+prompt_setup() {
+  # Prevent percentage showing up if output doesn't end with a newline.
+  export PROMPT_EOL_MARK=''
+
+  prompt_opts=(subst percent)
+
+  # Borrowed from `promptinit`. Sets the prompt options in case Pure was not
+  # initialized via `promptinit`.
+  setopt noprompt{bang,cr,percent,subst} "prompt${^prompt_opts[@]}"
+
+  if [[ -z $prompt_newline ]]; then
+    # This variable needs to be set, usually set by promptinit.
+    typeset -g prompt_newline=$'\n%{\r%}'
+  fi
+
+  zmodload zsh/datetime
+  zmodload zsh/zle
+  zmodload zsh/parameter
+  zmodload zsh/zutil
+
+  autoload -Uz add-zsh-hook
+  autoload -Uz vcs_info
+  autoload -Uz async && async
+
+  add-zsh-hook precmd prompt_precmd
+  PROMPT='$ '
+}
+
+prompt_setup "$@"
