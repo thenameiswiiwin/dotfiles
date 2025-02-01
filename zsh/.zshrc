@@ -49,3 +49,14 @@ fi
 # 7. Terraform Autocomplete
 autoload -U +X bashcompinit && bashcompinit
 complete -o nospace -C /opt/homebrew/bin/terraform terraform
+
+# bun completions
+[ -s "/Users/huy/.bun/_bun" ] && source "/Users/huy/.bun/_bun"
+
+# pnpm
+export PNPM_HOME="/Users/huy/Library/pnpm"
+case ":$PATH:" in
+  *":$PNPM_HOME:"*) ;;
+  *) export PATH="$PNPM_HOME:$PATH" ;;
+esac
+# pnpm end

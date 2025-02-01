@@ -5,7 +5,7 @@
 
 set -euo pipefail
 
-# 1. Request sudo
+# Request sudo
 echo "Requesting sudo privileges..."
 sudo -v
 while true; do
@@ -14,7 +14,7 @@ while true; do
   kill -0 "$$" || exit
 done 2>/dev/null &
 
-# 2. Xcode Command Line Tools (macOS)
+# Xcode Command Line Tools (macOS)
 if ! xcode-select --print-path &>/dev/null; then
   echo "Installing Xcode Command Line Tools..."
   xcode-select --install
@@ -22,7 +22,7 @@ else
   echo "Xcode Command Line Tools already installed."
 fi
 
-# 3. Homebrew
+# Homebrew
 if ! command -v brew &>/dev/null; then
   echo "Installing Homebrew..."
   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
@@ -31,7 +31,7 @@ else
   brew update && brew upgrade
 fi
 
-# 4. Dotfiles Repo
+# Dotfiles Repo
 DOTFILES_DIR="$HOME/.dotfiles"
 DOTFILES_REPO="https://github.com/thenameiswiiwin/dotfiles-2025.git"
 
@@ -43,7 +43,7 @@ else
   git clone "$DOTFILES_REPO" "$DOTFILES_DIR"
 fi
 
-# 5. Brewfile
+# Brewfile
 if [ -f "$DOTFILES_DIR/Brewfile" ]; then
   echo "Running Brewfile..."
   cd "$DOTFILES_DIR" || exit
@@ -53,17 +53,11 @@ else
   echo "[WARN] Brewfile not found in $DOTFILES_DIR."
 fi
 
-# 6. Oh My Zsh
+# Oh My Zsh
 if [ ! -d "$HOME/.oh-my-zsh" ]; then
   echo "Installing Oh My Zsh..."
   sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
 fi
-
-# 7. Node via fnm (Fast Node Manager)
-echo "Setting up fnm..."
-eval "$(fnm env)"
-fnm install --lts
-fnm use --lts
 
 # Python
 if ! command -v python3 &>/dev/null; then
@@ -71,10 +65,10 @@ if ! command -v python3 &>/dev/null; then
   brew install python
 else
   echo "[INFO] Python already installed. Upgrading pip..."
-  python3 -m pip install --upgrade pip
+  brew upgrade python
 fi
 
-# 8. Rust
+# Rust
 if ! command -v rustc &>/dev/null; then
   echo "Installing Rust..."
   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
@@ -99,25 +93,42 @@ else
   echo "[INFO] Bun is already installed."
 fi
 
-# 9. Tmux Plugin Manager
+# Tmux Plugin Manager
 if [ ! -d "$HOME/.tmux/plugins/tpm" ]; then
   echo "Installing Tmux Plugin Manager..."
   git clone https://github.com/tmux-plugins/tpm "$HOME/.tmux/plugins/tpm"
 fi
 
-# 10. Git Config
+# Git Config
 git config --global user.name "Huy Nguyen"
 git config --global user.email "huyn.nguyen95@gmail.com"
 git config --global credential.helper store
 
-# 11. GH Copilot CLI
+# GH Copilot CLI
 if command -v gh &>/dev/null; then
   gh auth login
   gh extension install github/gh-copilot
   gh extension upgrade gh-copilot
 fi
 
-# 12. Clean Up
+# Docker
+if ! command -v docker &>/dev/null; then
+  echo "[INFO] Installing Docker Desktop..."
+  brew install --cask docker
+  brew install docker
+  echo "[NOTE] Docker Desktop installed. You may need to launch Docker.app from your Applications folder"
+  echo "and follow any prompts to finalize the Docker installation."
+else
+  echo "[INFO] Docker is already installed."
+fi
+
+# Node via fnm (Fast Node Manager)
+echo "Setting up fnm..."
+eval "$(fnm env)"
+fnm install --lts
+fnm ls
+
+# Clean Up
 brew cleanup
 
 echo "================================================="
